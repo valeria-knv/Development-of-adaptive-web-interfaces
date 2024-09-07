@@ -12,9 +12,11 @@ class MenuItems
         Exit = 3
     }
 
+    public static bool exit;
+
     static void Main(string[] args)
     {
-        bool exit = false;
+        exit = false;
 
         while (!exit)
         {
