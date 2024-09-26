@@ -1,213 +1,243 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Formats.Asn1;
 using System.Globalization;
 using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using AutoMapper;
 using Bogus;
 using ClosedXML.Excel;
 using CsvHelper;
 using FluentValidation;
-using HtmlAgilityPack;
-using MassTransit;
-using MediatR;
-using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
-using RestSharp;
 
 
 
 namespace lr2
 {
-    // Клас для MediatR
-    public class Ping : IRequest<string> { }
-
-    public class PingHandler : IRequestHandler<Ping, string>
+    namespace ProductApiExample
     {
-        public Task<string> Handle(Ping request, CancellationToken cancellationToken)
+        // Product 1: Bogus
+        public class ProductBogus
         {
-            return Task.FromResult("Message from MediatR");
+            public string? Name { get; set; }
+            public decimal Price { get; set; }
         }
-    }
 
-    public delegate object ServiceFactory(Type serviceType);
-
-
-    // Клас для AutoMapper
-    public class Person
-    {
-        public string? FirstName { get; set; }
-        public string? LastName { get; set; }
-        public DateTime DateOfBirth { get; set; }
-        public string? Email { get; set; }
-    }
-
-
-    // Модель для CSV
-    public class CsvPerson
-    {
-        public string? FirstName { get; set; }
-        public string? LastName { get; set; }
-        public string? Email { get; set; }
-    }
-
-
-    // Клас для FluentValidation
-    public class PersonValidator : AbstractValidator<Person>
-    {
-        public PersonValidator()
+        public static class ProductBogusApi
         {
-            RuleFor(p => p.FirstName).NotEmpty().WithMessage("First Name cannot be empty");
-            RuleFor(p => p.LastName).NotEmpty().WithMessage("Last Name cannot be empty");
-            RuleFor(p => p.Email).EmailAddress().WithMessage("Invalid email format");
-        }
-    }
-
-
-    // Клас для MassTransit (обмін повідомленнями)
-    public class Message
-    {
-        public string? Text { get; set; }
-    }
-
-
-    // Основний клас програми
-    public class Program
-    {
-        public static async Task Main(string[] args)
-        {
-            // 1. NodaTime
-            var now = SystemClock.Instance.GetCurrentInstant();
-            var timeZone = DateTimeZoneProviders.Tzdb["Europe/Kyiv"];
-            var zonedTime = now.InZone(timeZone);
-            Console.WriteLine($"Current Time in Kyiv (NodaTime): {zonedTime}");
-
-            // 2. MediatR
-            var services = new ServiceCollection();
-
-            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
-            services.AddTransient<IRequestHandler<Ping, string>, PingHandler>();
-
-            var provider = services.BuildServiceProvider();
-            var mediator = provider.GetRequiredService<IMediator>();
-            var response = await mediator.Send(new Ping());
-
-            Console.WriteLine($"MediatR Response: {response}");
-
-            // 3. RestSharp
-            var client = new RestClient("https://jsonplaceholder.typicode.com");
-            var request = new RestRequest("users", Method.Get);
-            var apiResponse = await client.ExecuteAsync(request);
-
-            Console.WriteLine($"RestSharp Response Status: {apiResponse.StatusCode}");
-            Console.WriteLine($"RestSharp Response Content: {apiResponse.Content}");
-
-            // 4. Bogus
-            var faker = new Faker<Person>()
-                .RuleFor(p => p.FirstName, f => f.Name.FirstName())
-                .RuleFor(p => p.LastName, f => f.Name.LastName())
-                .RuleFor(p => p.Email, f => f.Internet.Email())
-                .RuleFor(p => p.DateOfBirth, f => f.Date.Past(30));
-
-            var fakePeople = faker.Generate(10);
-
-            // 5. FluentValidation
-            var validator = new PersonValidator();
-            foreach (var person in fakePeople)
+            public static List<ProductBogus> GenerateFakeProducts(int count)
             {
-                var result = validator.Validate(person);
-                if (!result.IsValid)
+                var faker = new Faker<ProductBogus>()
+                    .RuleFor(p => p.Name, f => f.Commerce.ProductName())
+                    .RuleFor(p => p.Price, f => decimal.Parse(f.Commerce.Price())); ;
+
+                return faker.Generate(count);
+            }
+        }
+
+        // Product 2: FluentValidation
+        public class ProductFluentValidation
+        {
+            public string? Name { get; set; }
+            public decimal Price { get; set; }
+        }
+
+        public class ProductValidator : AbstractValidator<ProductFluentValidation>
+        {
+            public ProductValidator()
+            {
+                RuleFor(p => p.Name).NotEmpty().WithMessage("Product name cannot be empty");
+                RuleFor(p => p.Price).GreaterThan(0).WithMessage("Price must be greater than zero");
+            }
+        }
+
+        public static class ProductFluentValidationApi
+        {
+            public static bool ValidateProduct(ProductFluentValidation product)
+            {
+                var validator = new ProductValidator();
+                var result = validator.Validate(product);
+                return result.IsValid;
+            }
+        }
+
+        // Product 3: AutoMapper
+        public class ProductDto
+        {
+            public string? Name { get; set; }
+            public decimal Price { get; set; }
+        }
+
+        public class ProductDomain
+        {
+            public string? Name { get; set; }
+            public decimal Price { get; set; }
+        }
+
+        public static class ProductAutoMapperApi
+        {
+            private static IMapper mapper;
+
+            static ProductAutoMapperApi()
+            {
+                var config = new MapperConfiguration(cfg => cfg.CreateMap<ProductDto, ProductDomain>());
+                mapper = config.CreateMapper();
+            }
+
+            public static ProductDomain MapProduct(ProductDto dto)
+            {
+                return mapper.Map<ProductDomain>(dto);
+            }
+        }
+
+        // Product 4: CsvHelper
+        public class ProductCsv
+        {
+            public string? Name { get; set; }
+            public decimal Price { get; set; }
+        }
+
+        public static class ProductCsvHelperApi
+        {
+            public static void WriteProductsToCsv(List<ProductCsv> products, string filePath)
+            {
+                using (var writer = new StreamWriter(filePath))
+                using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
                 {
-                    foreach (var error in result.Errors)
+                    csv.WriteRecords(products);
+                }
+            }
+
+            public static List<ProductCsv> ReadProductsFromCsv(string filePath)
+            {
+                using (var reader = new StreamReader(filePath))
+                using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
+                {
+                    return new List<ProductCsv>(csv.GetRecords<ProductCsv>());
+                }
+            }
+        }
+
+        // Product 5: ClosedXML and NodaTime
+        public class ProductWithDate
+        {
+            public string? Name { get; set; }
+            public decimal Price { get; set; }
+            public LocalDateTime CreatedDate { get; set; }
+        }
+
+        public static class ProductClosedXmlNodaTimeApi
+        {
+            public static void ExportToExcel(List<ProductWithDate> products, string filePath)
+            {
+                using (var workbook = new XLWorkbook())
+                {
+                    var worksheet = workbook.Worksheets.Add("Products");
+                    worksheet.Cell(1, 1).Value = "Name";
+                    worksheet.Cell(1, 2).Value = "Price";
+                    worksheet.Cell(1, 3).Value = "CreatedDate";
+
+                    for (int i = 0; i < products.Count; i++)
                     {
-                        Console.WriteLine($"Validation Error: {error.ErrorMessage}");
+                        worksheet.Cell(i + 2, 1).Value = products[i].Name;
+                        worksheet.Cell(i + 2, 2).Value = products[i].Price;
+                        worksheet.Cell(i + 2, 3).Value = products[i].CreatedDate.ToString();
+                    }
+
+                    workbook.SaveAs(filePath);
+                }
+            }
+
+            public static List<ProductWithDate> ImportFromExcel(string filePath)
+            {
+                var products = new List<ProductWithDate>();
+                using (var workbook = new XLWorkbook(filePath))
+                {
+                    var worksheet = workbook.Worksheets.Worksheet(1);
+                    var rows = worksheet.RowsUsed();
+                    foreach (var row in rows)
+                    {
+                        if (row.RowNumber() == 1) continue;
+
+                        var name = row.Cell(1).GetString();
+                        var price = row.Cell(2).GetValue<decimal>();
+
+                        LocalDateTime createdDate;
+
+                        try
+                        {
+                            var dateString = row.Cell(3).GetString();
+
+                            if (DateTime.TryParseExact(dateString, "dd.MM.yyyy HH:mm:ss",
+                                CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime dateTimeValue))
+                            {
+                                createdDate = LocalDateTime.FromDateTime(dateTimeValue);
+                            }
+                            else
+                            {
+                                throw new FormatException("Неправильний формат дати.");
+                            }
+                        }
+                        catch (Exception ex) when (ex is FormatException || ex is InvalidCastException)
+                        {
+                            createdDate = LocalDateTime.FromDateTime(DateTime.MinValue);
+                            Console.WriteLine("Неможливо перетворити значення в дату: " + ex.Message);
+                        }
+
+                        products.Add(new ProductWithDate { Name = name, Price = price, CreatedDate = createdDate });
                     }
                 }
+                return products;
             }
+        }
 
-            // 6. AutoMapper
-            var config = new MapperConfiguration(cfg => cfg.CreateMap<Person, CsvPerson>());
-            var mapper = new Mapper(config);
-            var csvPeople = mapper.Map<List<CsvPerson>>(fakePeople);
-
-            // 7. CsvHelper
-            using (var writer = new StreamWriter("people.csv"))
-            using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+        // Example usage of the APIs
+        class Program
+        {
+            static void Main(string[] args)
             {
-                csv.WriteRecords(csvPeople);
-            }
-            Console.WriteLine("Data written to people.csv");
+                var culture = new CultureInfo("en-US");
 
-            // 8. ClosedXML
-            var workbook = new XLWorkbook();
-            var worksheet = workbook.Worksheets.Add("People");
+                // Bogus
+                var fakeProducts = ProductBogusApi.GenerateFakeProducts(5);
+                Console.WriteLine("Fake Products:");
+                fakeProducts.ForEach(p => Console.WriteLine($"{p.Name} - {p.Price.ToString("C", culture)}"));
 
-            worksheet.Cell(1, 1).Value = "First Name";
-            worksheet.Cell(1, 2).Value = "Last Name";
-            worksheet.Cell(1, 3).Value = "Email";
-            worksheet.Cell(1, 4).Value = "Date of Birth";
+                // FluentValidation
+                var productToValidate = new ProductFluentValidation { Name = "Product1", Price = 100 };
+                var isValid = ProductFluentValidationApi.ValidateProduct(productToValidate);
+                Console.WriteLine($"Is product valid: {isValid}");
 
-            for (int i = 0; i < fakePeople.Count; i++)
+                // AutoMapper
+                var productDto = new ProductDto { Name = "ProductDto", Price = 150 };
+                var mappedProduct = ProductAutoMapperApi.MapProduct(productDto);
+                Console.WriteLine($"Mapped Product: {mappedProduct.Name} - {mappedProduct.Price.ToString("C", culture)}");
+
+                // CsvHelper
+                var csvProducts = new List<ProductCsv>
             {
-                worksheet.Cell(i + 2, 1).Value = fakePeople[i].FirstName;
-                worksheet.Cell(i + 2, 2).Value = fakePeople[i].LastName;
-                worksheet.Cell(i + 2, 3).Value = fakePeople[i].Email;
-                worksheet.Cell(i + 2, 4).Value = fakePeople[i].DateOfBirth;
-            }
+                new ProductCsv { Name = "CsvProduct1", Price = 200 },
+                new ProductCsv { Name = "CsvProduct2", Price = 300 }
+            };
+                string csvPath = "products.csv";
+                ProductCsvHelperApi.WriteProductsToCsv(csvProducts, csvPath);
+                var readProducts = ProductCsvHelperApi.ReadProductsFromCsv(csvPath);
+                Console.WriteLine("Read Products from CSV:");
+                readProducts.ForEach(p => Console.WriteLine($"{p.Name} - {p.Price.ToString("C", culture)}"));
 
-            workbook.SaveAs("people.xlsx");
-            Console.WriteLine("Data written to people.xlsx");
-
-            // 9. HtmlAgilityPack
-            var doc = new HtmlDocument();
-            var html = "<html><body></body></html>";
-            doc.LoadHtml(html);
-            //var p = doc.DocumentNode.SelectSingleNode("//p");
-            var p = HtmlNode.CreateNode("<p></p>");
-            doc.DocumentNode.SelectSingleNode("//body").AppendChild(p);
-
-            Console.WriteLine("Generated Data (Bogus):");
-            foreach (var person in fakePeople)
+                // ClosedXML and NodaTime
+                var productsWithDate = new List<ProductWithDate>
             {
-                var personNode = HtmlNode.CreateNode($"<strong>{person.FirstName} {person.LastName}, {person.Email}, DOB: {person.DateOfBirth.ToShortDateString()}</strong>");
-                p.AppendChild(personNode);
-            }
-            Console.WriteLine($"{p.InnerText}");
-
-            // 10. MassTransit
-            var busControl = Bus.Factory.CreateUsingInMemory(cfg =>
-            {
-                cfg.ReceiveEndpoint("message_queue", ep =>
-                {
-                    ep.Handler<Message>(context =>
-                    {
-                        return Console.Out.WriteLineAsync($"Received: {context.Message.Text}");
-                    });
-                });
-            });
-
-            await busControl.StartAsync();
-            try
-            {
-                try
-                {
-                    await busControl.Publish(new Message { Text = "Hello, World!" });
-                    Console.WriteLine("Message published. Press any key to exit.");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error publishing message: {ex.Message}");
-                }
-
-                Console.ReadKey();
-            }
-            finally
-            {
-                await busControl.StopAsync();
+                new ProductWithDate { Name = "ExcelProduct1", Price = 400, CreatedDate = LocalDateTime.FromDateTime(DateTime.Now) },
+                new ProductWithDate { Name = "ExcelProduct2", Price = 500, CreatedDate = LocalDateTime.FromDateTime(DateTime.Now) }
+            };
+                string excelPath = "products.xlsx";
+                ProductClosedXmlNodaTimeApi.ExportToExcel(productsWithDate, excelPath);
+                var importedProducts = ProductClosedXmlNodaTimeApi.ImportFromExcel(excelPath);
+                Console.WriteLine("Imported Products from Excel:");
+                importedProducts.ForEach(p => Console.WriteLine($"{p.Name} - {p.Price.ToString("C", culture)} - {p.CreatedDate}"));
             }
         }
     }
+
 
 }
