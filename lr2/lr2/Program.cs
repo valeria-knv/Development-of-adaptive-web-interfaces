@@ -1,72 +1,57 @@
-﻿using System; // API для основних типів і операцій
-using System.IO; // API для роботи з файлами і потоками
-using System.Net; // API для роботи з мережею (HTTP запити)
-using System.Data.SqlClient; // API для роботи з базами даних SQL
-using System.Threading.Tasks; // API для асинхронних операцій
-using System.Globalization; // API для роботи з культурами і форматами
-using System.Xml; // API для роботи з XML-документами
-using System.Text.RegularExpressions; // API для роботи з регулярними виразами
-using System.Security.Cryptography;
+﻿using Bogus;
+using FluentValidation;
+using CsvHelper;
+using ClosedXML.Excel;
+using NodaTime;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 
-
-namespace lr2
-{
+namespace LR2
+{  
     class Program
     {
         static void Main(string[] args)
         {
-            // 1. DateTime
-            DateTime now = DateTime.Now;
-            CultureInfo culture = new CultureInfo("EU-UA");
-            Console.WriteLine("Формат дати для України: " + now.ToString(culture));
+            var culture = new CultureInfo("en-US");
 
-            // 2. File
-            string filePath = "example.txt";
-            File.WriteAllText(filePath, "Запис до файлу!)");
+            // Bogus API
+            var fakeProducts = ProductBogusApi.GenerateFakeProducts(5);
+            Console.WriteLine("Fake Products:");
+            fakeProducts.ForEach(p => Console.WriteLine($"{p.Name} - {p.Price.ToString("C", culture)}"));
 
-            string fileContent = File.ReadAllText(filePath);
-            Console.WriteLine($"Вмiст файлу: {fileContent}");
+            // FluentValidation API
+            var productToValidate = new ProductFluentValidation { Name = "Product1", Price = 100 };
+            var isValid = ProductFluentValidationApi.ValidateProduct(productToValidate);
+            Console.WriteLine($"Is product valid: {isValid}");
 
-            // 3. RegularExpressions
-            string[] phoneNumbers = new string[]
+            // CsvHelper API
+            var csvProducts = new List<ProductCsv>
             {
-                "+38 095 672 0031",
-                "Телефон вiдсутнiй",
-                "+38 067 123 4567",
-                "Неправильний номер +39 123 456",
-                "+38 050 555 7777"
+                new ProductCsv { Name = "CsvProduct1", Price = 200 },
+                new ProductCsv { Name = "CsvProduct2", Price = 300 }
             };
+            string csvPath = "products.csv";
+            ProductCsvHelperApi.WriteProductsToCsv(csvProducts, csvPath);
+            var readProducts = ProductCsvHelperApi.ReadProductsFromCsv(csvPath);
+            Console.WriteLine("Read Products from CSV:");
+            readProducts.ForEach(p => Console.WriteLine($"{p.Name} - {p.Price.ToString("C", culture)}"));
 
-            string pattern = @"\+38 \d{3} \d{3} \d{4}";
-
-            foreach (string phoneNumber in phoneNumbers)
+            // ClosedXML + NodaTime API
+            var productsWithDate = new List<ProductWithDate>
             {
-                Match match = Regex.Match(phoneNumber, pattern);
-                if (match.Success)
-                {
-                    Console.WriteLine("Знайдено номер телефону: " + match.Value);
-                }
-                else
-                {
-                    Console.WriteLine("Номер телефону не знайдено в текстi: " + phoneNumber);
-                }
-            }
+                new ProductWithDate { Name = "ExcelProduct1", Price = 400, CreatedDate = LocalDateTime.FromDateTime(DateTime.Now) },
+                new ProductWithDate { Name = "ExcelProduct2", Price = 500, CreatedDate = LocalDateTime.FromDateTime(DateTime.Now) }
+            };
+            string excelPath = "products.xlsx";
+            ProductClosedXmlNodaTimeApi.ExportToExcel(productsWithDate, excelPath);
+            var importedProducts = ProductClosedXmlNodaTimeApi.ImportFromExcel(excelPath);
+            Console.WriteLine("Imported Products from Excel:");
+            importedProducts.ForEach(p => Console.WriteLine($"{p.Name} - {p.Price.ToString("C", culture)} - {p.CreatedDate}"));
 
-            // 4. XMLDocumnet
-            string xmlContent = "<person><name>Lera</name></person>";
-            XmlDocument xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(xmlContent);
-            XmlNode nameNode = xmlDoc.SelectSingleNode("//name");
-            Console.WriteLine($"Iм'я з XML: {nameNode.InnerText}");
-
-            // 5. Hash
-            string password = "parol123";
-            using (SHA256 sha256 = SHA256.Create())
-            {
-                byte[] hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
-                string hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
-                Console.WriteLine($"SHA-256 хеш пароля: {hash}");
-            }
+            Console.WriteLine("\nPress any key...");
+            Console.ReadKey();
         }
     }
 }
