@@ -9,9 +9,9 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>valeria.knv</groupId>
-	<artifactId>lr6</artifactId>
+	<artifactId>lr7</artifactId>
 	<version>1.0.0</version>
-	<name>lr6</name>
+	<name>lr7</name>
 	<description>Demo project for Spring Boot</description>
 
 	<properties>
@@ -21,17 +21,6 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>org.springdoc</groupId>
-			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-			<version>2.6.0</version>
-		</dependency>
-		<dependency>
-			<groupId>io.swagger.core.v3</groupId>
-			<artifactId>swagger-annotations-jakarta</artifactId>
-			<version>2.2.22</version>
 		</dependency>
 
 		<dependency>
