@@ -1,10 +1,10 @@
-package valeria.knv.lr5;
+package valeria.knv.lr6;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class Lr5ApplicationTests {
+class Lr6ApplicationTests {
 
 	@Test
 	void contextLoads() {

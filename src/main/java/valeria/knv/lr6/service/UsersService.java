@@ -1,13 +1,11 @@
-package valeria.knv.lr5.service;
+package valeria.knv.lr6.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import valeria.knv.lr5.entity.User;
-import valeria.knv.lr5.repository.UsersRepository;
-import valeria.knv.lr5.response.ApiResponse;
-import valeria.knv.lr5.utils.http.WebClientUtility;
+import valeria.knv.lr6.entity.User;
+import valeria.knv.lr6.repository.UsersRepository;
+import valeria.knv.lr6.response.ApiResponse;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,14 +14,9 @@ import java.util.Optional;
 public class UsersService {
     @Autowired private UsersRepository usersRepository;
 
-    // Завдання 1
-    public ResponseEntity<?> mock(){
-        return WebClientUtility.getRequest("https://dummyjson.com/users");
-    }
-
     public ApiResponse<List<User>> getUsers(){
         List<User> users = usersRepository.getAll();
-        if (!users.isEmpty())
+        if (users.size() > 0)
             return new ApiResponse<>("Users found", HttpStatus.OK, users);
         else
             return new ApiResponse<>("User list empty", HttpStatus.OK);

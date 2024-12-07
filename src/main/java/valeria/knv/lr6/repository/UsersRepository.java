@@ -1,7 +1,7 @@
-package valeria.knv.lr5.repository;
+package valeria.knv.lr6.repository;
 
 import org.springframework.stereotype.Component;
-import valeria.knv.lr5.entity.User;
+import valeria.knv.lr6.entity.User;
 
 import java.util.*;
 
