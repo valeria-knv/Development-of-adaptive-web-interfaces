@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "c7Jl9aCjIq48b7rYobD9BkA9rnrGDCOfKSjQqHI6s28=",
+  "Source": "GrpcWebApiExample",
+  "BasePath": "_content/GrpcWebApiExample",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}
